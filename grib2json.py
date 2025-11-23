@@ -194,9 +194,10 @@ def run_example(input):
 if __name__ == "__main__":
     ifile = 'test.grb'
     ofile = sys.stdout
-    if (len(sys.argv) == 2):
+    argc = len(sys.argv)
+    if (argc > 1):
         ifile = sys.argv[1]
-    if (len(sys.argv) == 3):
+    if (argc > 2):
         ofile = open(sys.argv[2], "w")
     try:
         a = run_example(ifile)

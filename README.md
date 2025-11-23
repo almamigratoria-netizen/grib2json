@@ -29,10 +29,11 @@ console.log(grib);
 The [WMO](https://wmo.int) ( World Meteorological Organization ), in cooperation the [ECMWF](https://www.ecmwf.int) \(European Centre for Medium Range Weather Forecasting) developed the GRIB \(**GRI**dded **B**inary ) format as a way to store and interchange weather and climate data.  Tools to manipulate it are generally fairly complicated.  There are a number of web map plugsins that display environmentatal data (winds, temperature, aerosol density, etc) for just about every web map suite (Google maps, OpenLayers, Leaflet, etc).  They pretty much all ingest data in the format produced by @cambecc's tool.  
 
 ## So why not just use @cambecc's tool
-Because it's written in Java, which I find hard to set up on Windows, java is either forbidden or strongly discouraged in many government and corporate environments, and java runs like a snail on embedded systems and old Raspberry Pi's.  Offloading the processing to the browser makes a lot of sense in environments like that.  The python version was written because most people these days prefer python to java.
+Because it's written in Java \(which many find hard to set up on Windows), java is either forbidden or strongly discouraged in many government and corporate environments \(a security and update issue), and java runs like a snail on embedded systems and old Raspberry Pi's.  Offloading the processing to the browser makes a lot of sense in environments like that.  The python version was written because most people these days prefer python to java.
 
 ## OK, then how do you parse a GRIB?
 GRIB files are comprised of 1 or more __messages__ which in turn are comprised of numbered __sections__.  The sections are:<br />
+[Section 0](#section-0) \(Indicator Section)
 [Section 1](#section-1) \(Identification Section)
 [Section 2](#section-2) \(Local Use Section)
 [Section 3](#section-3) \(Grid Definition Section)
@@ -41,10 +42,10 @@ GRIB files are comprised of 1 or more __messages__ which in turn are comprised o
 [Section 6](#section-6) \(Bitmap Section)
 [Section 7](#section-7) \(Data Section)
 [Section 8](#section-8) \(End of Message Section) <br/>
-Knowing how the sections are layed out, parsing a GRIB with javascript becomes (mostly) a matter of following the recipe.  This javascript version is basically chocolate chip cookies without the chocolate chips or the nuts.  There are several differenct gridding and compressions schemes.  The javascript version handles _one_.  It's (so far) only good enough to parse terrestrial weather GRIB's downloaded from the NCEP.  The python script uses the [eccodes](https://github.com/ecmwf/eccodes) library, which is the WMO reference implementation for parsing GRIB files, so it will handle a wider range of inputs.
+Knowing how the sections are layed out, parsing a GRIB with javascript becomes (mostly) a matter of following the recipe.  This javascript version is basically chocolate chip cookies without the chocolate chips or the nuts.  There are several possible gridding and compressions schemes but the javascript version only handles one of them.  It's (so far) only good enough to parse terrestrial weather GRIB's downloaded from some place like the NCEP.  The python script uses the [eccodes](https://github.com/ecmwf/eccodes) library, which is the WMO reference implementation for parsing GRIB files, so it will handle a wider range of inputs.
 
 ## What if I have a GRIB that the javascript won't parse?
-Please open an issue that includes a URL to the GRIB, and if you can submit a PR with the fix. 
+Please open an issue that includes a URL to the GRIB. If you can, submit a PR with the fix. 
 
 # License
 Both of these scripts are licensed under the [MIT](./LICENSE.md) license.

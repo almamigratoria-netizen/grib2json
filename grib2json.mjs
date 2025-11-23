@@ -476,7 +476,7 @@ export const grib2json = async function(url) {
             "PRO-0-7-21":  [ "", "SSI", "Storm Severity Index" ],
             "PRO-0-17-192": [ "", "LTNG", "Lightning" ],
             // Discipline 1 - Hydrology 
-            "PRO-0-1-11":  [ "m", "SNOD", "Snow Depth" ],
+            "PRO-1-1-11":  [ "m", "SNOD", "Snow Depth" ],
             // Discipline 2 - Land Surface Products (land/sea, soil temp, etc)
             // Discipline 3 - Satellite Remote Sensing
             "PRO-3-5-0":   [ "K", "ISSTMP", "Interface Sea Surface Temperture" ],
@@ -487,7 +487,7 @@ export const grib2json = async function(url) {
             "PRO-10-1-2":  [ "m/s", "UOGRG", "U-Component of Current" ],
             "PRO-10-1-3":  [ "m/s", "VOGRD", "V-Component of Current" ],
             // Discipline 19 - Physical atmospheric properties
-            "PRO-19-0-0":  [ "m", "VIS", "Visibility" ],
+            "PRO-19-0-1":  [ "m", "VIS", "Visibility" ],
         }
 
         const slice = (a, b) => { return bytes.slice(a, b + 1); }
