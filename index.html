@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang=en>
+  <head>
+    <title>grib2json.js devel</title>
+    <link rel="icon" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" contents="GRIB grib2json javascript weather" />
+    <!-- CSS -->
+    <link rel="stylesheet" href="./lib/leaflet-2.0.0-alpha.1/dist/leaflet.css">
+    <link rel="stylesheet" href="./lib/lds-spinner.css">
+    <style>
+      html, body, #map {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        padding: 0px;
+      }
+      .columns {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+        gap: 4px;
+      }
+      .leftColumn {
+        background-color: black; 
+        color: white;
+        overflow-y: auto;
+      }
+      .rightColumn {
+        overflow-y: auto;
+      }
+      h4 {
+        text-align: center;
+      }
+      :invalid: {
+        border: red;
+      }
+      .spinner-parent {
+        position: relative;
+        height: 80px;
+        width: 80px;
+        top: 50%;
+        left: 50%;
+        display:none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class='columns' style="height: 100%;">
+      <div class='leftColumn'>
+        <h4>Select Area</h4>
+        <form id='bbox'>
+          <div style='text-align:center;'>
+          <label for="north">North</label>
+          <br />
+          <input type='number' name="north" id="north" 
+                 placeholder='North' maxlength=5 size=6 
+                 min=-90 max=90 step=5 type=number value=0 />
+          </div>
+          <div style='text-align:center;'>
+            <label for="west">West</label>
+            <input type='number' name="west" id="west" 
+                   placeholder='West' maxlength=4 size=5 
+                   min=-180 max=180 step=5 type=number value=-40 />
+            <input type='number' name="east" id="east" 
+                   placeholder='East' maxlength=4 size=5 
+                   min=-180 max=180 step=5 type=number value=0 />
+            <label for="east">East</label>
+          </div>
+          <div style='text-align:center;'>
+            <input type='number' name="south" id="south" 
+                   placeholder='South' maxlength=5 size=6 
+                   min=-90 max=90 step=5 type=number value=-40 />
+            <br />
+            <label for="south">South</label>
+          </div>
+        </form>
+
+        <h4>Select Parameters</h4>
+        <form id='params' style='margin-left: 1.5em;'>
+          <div>
+            <input type='checkbox' id='prmsl' name='prmsl' 
+                   data-level='surface' 
+                   data-var='PRMSL' checked />
+            <label for='prmsl'>Pressure</label>
+          </div>
+          <div>
+            <input type='checkbox' id='tmp' name='tmp' 
+                   data-level='2_m_above_ground' 
+                   data-var='TMP' checked />
+            <label for='tmp'>Temperature</label>
+          </div>
+          <div>
+            <input type='checkbox' id='winds' name='winds' 
+                   data-level='10_m_above_ground' 
+                   data-var='wind' checked />
+            <label for='tmp'>Winds</label>
+          </div>
+          <div>
+            <input type='checkbox' id='rh' 
+                   name='rh' data-level='2_m_above_ground' 
+                   data-var='RH' />
+            <label for='tmp'>Relative Humdity</label>
+          </div>
+          <div>
+            <input type='checkbox' id='apcp' 
+                   name='apcp' data-level='surface' 
+                   data-var='APCP' />
+            <label for='apcp'>Total Precipitation</label>
+          </div>
+          <div>
+            <input type='checkbox' id='vis' 
+                   name='vis' data-level='surface' 
+                   data-var='VIS' />
+            <label for='vis'>Visibility</label>
+          </div>
+          <div>
+            <input type='checkbox' id='dpt' 
+                   name='dpt' data-level='2_m_above_ground'
+                   data-var='DPT' />
+            <label for='dpt'>Dew Point</label>
+          </div>
+          <div>
+            <input type='checkbox' id='tcdc' 
+                   name='tcdc' data-level='2_m_above_ground' 
+                   data-var='TCDC' />
+            <label for='tcdc'>Total Cloud Cover</label>
+          </div>
+          <div>
+            <input type='checkbox' id='snod' 
+                   name='snod' data-level='surface' 
+                   data-var='SNOD' />
+            <label for='tcdc'>Snow Depth</label>
+          </div>
+          <br />
+          <button style="margin-top:1em;" type='button' 
+                  name='getGrib' id='getGribButton' data-state='grib'>
+            Download GRIB
+          </button>
+        </form>
+      </div>
+      <div class='rightColumn' style="height: 100%;" id='map'>
+      </div>
+    </div>
+    <!-- have 2 version, .js and .mjs -->
+    <script type='importmap'>
+    {
+      "imports": {
+        "leaflet": "./lib/leaflet-2.0.0-alpha.1/dist/leaflet.js",
+        "grib2json": "./grib2json.mjs"
+      }
+    }
+    </script>
+    <script type='module'>
+      import grib2json from 'grib2json';
+      import * as L from 'leaflet';
+
+      /////////////////////////////////////////////////////////////
+      //
+      //  The map
+      //
+      /////////////////////////////////////////////////////////////
+      const map = new L.Map('map').setView([0, 0], 3);
+      // add an OpenStreetMap tile layer
+      const OSM = 'https://{s}.tile.osm.org/{z}/{x}/{y}.png';
+      new L.TileLayer(OSM).addTo(map);
+
+      // Show bounding box
+      const north_el = document.querySelector('#north');
+      const south_el = document.querySelector('#south');
+      const east_el  = document.querySelector('#east');
+      const west_el  = document.querySelector('#west');
+      const grib_bt  = document.querySelector('#getGribButton');
+      let spinner;
+      (function buildSpinner() {
+          spinner = document.createElement('div');
+          spinner.className = 'spinner-parent';
+          spinner.style.zIndex = 10000;
+          const lds = document.createElement('div');
+          lds.className = 'lds-spinner';
+          spinner.appendChild(lds);
+          for (let i = 0 ; i < 12 ; i++) {
+              lds.appendChild(document.createElement('div'));
+          }
+          const mama = document.querySelector('.rightColumn');
+          mama.appendChild(spinner);
+      })();
+
+      const rect_opts = {
+        color: "#0077ff",
+        weight: 1,
+        opacity: 0.6,
+        fill: true,
+      };
+      let rect = null;
+
+      function drawBox() {
+          spinner.style.display = 'none';
+          if (grib_bt.dataset.state == 'json') {
+              grib_bt.dataset.state = 'grib';
+              grib_bt.textContent = "Download GRIB";
+          }
+          const top_left = [ north_el.value, west_el.value ];
+          const bottom_right = [ south_el.value, east_el.value ]
+          const bounds = [top_left, bottom_right];
+          if (rect) {
+              rect.removeFrom(map);
+          }
+          rect = new L.Rectangle(bounds, rect_opts);
+          rect.addTo(map);
+          map.fitBounds(bounds);
+      }
+
+      drawBox();
+
+      function buildURL() {
+          // https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25_1hr.pl?
+          const server = 'https://nomads.ncep.noaa.gov/';
+          const base = 'cgi-bin/filter_gefs_atmos_0p25s.pl?';
+          let now = new Date(Date.now());
+          let hr = now.getHours(); // need to get previous 6 hour
+          let hour = (Math.floor(hr/6) * 6).toString().padStart(2, '0');
+          // We can't get the 0600 GRIB at 0601, these things take time
+          // to generate.
+          if ((hr - (Math.floor(hr/6)*6)) < 2) {
+              now = new Date(now - (60 * 60 * 1000 * 5))
+              hr = now.getHours(); // back off 5 hours, give it a try
+              hour = (Math.floor(hr/6) * 6).toString().padStart(2, '0');
+          }
+          const year = now.getFullYear();
+          const month = (now.getMonth() + 1).toString().padStart(2, '0');
+          const day = (now.getDate()).toString().padStart(2, '0');
+          hr = now.getHours(); // need to get previous 6 hour
+          hour = (Math.floor(hr/6) * 6).toString().padStart(2, '0');
+          // dir=%2Fgefs.20251121%2F18%2Fatmos%2Fpgrb2sp25&
+          const ymd = `${year}${month}${day}`;
+          const dir = `dir=/gefs.${ymd}/${hour}/atmos/pgrb2sp25&`;
+          // file=geavg.t18z.pgrb2s.0p25.f000&
+          const file = `file=geavg.t${hour}z.pgrb2s.0p25.f000&`;
+          // var_APCP=on&var_DPT=on&var_PRATE=on&var_PRMSL=on&var_RH=on&
+          // lev_2_m_above_ground=on&lev_10_m_above_ground=on&
+          const param_form = document.querySelector('#params');
+          const checked = document.querySelectorAll('input:checked');
+          // create a Set of levels
+          let varArray = [];
+          const levelSet = {};
+          for (const el of checked) {
+              let ds = el.dataset;
+              levelSet[ds.level] = true;
+              if (ds.var == 'wind') {
+                  varArray.push('UGRD');
+                  varArray.push('VGRD');
+              } else {
+                  varArray.push(ds.var);
+              }
+          }
+          varArray.sort();
+          let vars = '';
+          for (let v of varArray) {
+              vars += `var_${v}=on&`;
+          }
+          let levels = ''
+          for (let l of Object.keys(levelSet)) {
+              levels += `lev_${l}=on&`;
+          }
+          let subregion = 'subregion=&';
+          const toplat = document.getElementById('north').value;
+          const leftlon = document.getElementById('west').value;
+          const rightlon = document.getElementById('east').value;
+          const bottomlat = document.getElementById('south').value;
+          subregion = subregion + `toplat=${toplat}&`;
+          subregion = subregion + `leftlon=${leftlon}&`;
+          subregion = subregion + `rightlon=${rightlon}&`;
+          subregion = subregion + `bottomlat=${bottomlat}`;
+          let url = `${server}${base}`;
+          let query = `${dir}${file}${vars}${levels}${subregion}`;
+          query = query.replaceAll('/', '%2F');
+          url = `${url}${query}`;
+          // Special shout-out to the gang at cors-anywhere !!
+          url = `https://cors-anywhere.com/${url}`;
+          return url;
+      }
+
+      let jsongrib;
+      async function grabGrib() {
+          if (grib_bt.dataset.state == 'grib') {
+              // show spinner
+              spinner.style.display = 'inline-block';
+              const url = buildURL();
+              jsongrib = await grib2json(url);
+              // remove spinner
+              spinner.style.display = 'none';
+              grib_bt.dataset.state = 'json';
+              grib_bt.textContent = 'Save JSON';
+          } else {
+              grib_bt.dataset.state = 'grib';
+              grib_bt.textContent = 'Download GRIB';
+              // create filename based on reftime
+              if (!jsongrib.length) { 
+                  console.warn("GRIB too short");
+                  return;
+              }
+              let refTime = jsongrib.match(/"refTime":.*?,/).toString();
+              refTime = refTime.match(/[0-9]{4}-.*:/).toString();
+              if (!refTime) { 
+                  console.warn("Warning: No refTime");
+                  refTime = "DownloadedGrib:";
+              }
+              refTime = refTime.slice(0, -1);
+              const blob = new Blob([jsongrib], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${refTime}.json`;
+              document.body.appendChild(a); // Append to body temporarily
+              a.click(); // Programmatically click the link to trigger download
+              document.body.removeChild(a); // Clean up the temporary link
+              URL.revokeObjectURL(url);     // Release the object URL
+          }
+
+          try {
+              // console.log("json = ", jsongrib);
+          } catch(e) {
+              console.error(`${e.name} ${e.message}`);
+          }
+      }
+
+      (function bindEvents() {
+          for (const id of ['north', 'south', 'east', 'west']) {
+              const el = document.getElementById(id);
+              el.addEventListener('change', drawBox);
+          }
+
+          // bind the button
+          grib_bt.addEventListener('click', grabGrib);
+      })();
+
+
+
+
+    </script> <!-- module -->
+    <!-- add webgl weather (wind/current/isobars/etc) -->
+    <!-- include leaflet, pako, grib2json.js, index.js -->
+    <script src="./lib/json5.min.js"></script>
+  </body>
+</html>
