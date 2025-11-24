@@ -8,42 +8,18 @@
     <!-- CSS -->
     <link rel="stylesheet" href="./lib/leaflet-2.0.0-alpha.1/dist/leaflet.css">
     <link rel="stylesheet" href="./lib/lds-spinner.css">
-    <style>
-      html, body, #map {
-        height: 100%;
-        margin: 0;
-        overflow: hidden;
-        padding: 0px;
-      }
-      .columns {
-        display: grid;
-        grid-template-columns: 1fr 3fr;
-        gap: 4px;
-      }
-      .leftColumn {
-        background-color: black; 
-        color: white;
-        overflow-y: auto;
-      }
-      .rightColumn {
-        overflow-y: auto;
-      }
-      h4 {
-        text-align: center;
-      }
-      :invalid: {
-        border: red;
-      }
-      .spinner-parent {
-        position: relative;
-        height: 80px;
-        width: 80px;
-        top: 50%;
-        left: 50%;
-        display:none;
-      }
-    </style>
+    <link rel="stylesheet" href="./index.css">
   </head>
+
+  <!-- Only a very small portion of this code actually has anything to do with
+       grib2json.js
+
+       It does, however, provide a practical example of downloading and
+       processing a grib file.
+
+       See the US National Weather Service's NOMADS page at:
+       https://nomads.ncep.noaa.gov/
+  -->
 
   <body>
     <div class='columns' style="height: 100%;">
@@ -142,7 +118,7 @@
       <div class='rightColumn' style="height: 100%;" id='map'>
       </div>
     </div>
-    <!-- have 2 version, .js and .mjs -->
+    <!-- we have 2 version, .js and .mjs -->
     <script type='importmap'>
     {
       "imports": {
@@ -171,21 +147,6 @@
       const east_el  = document.querySelector('#east');
       const west_el  = document.querySelector('#west');
       const grib_bt  = document.querySelector('#getGribButton');
-      let spinner;
-      (function buildSpinner() {
-          spinner = document.createElement('div');
-          spinner.className = 'spinner-parent';
-          spinner.style.zIndex = 10000;
-          const lds = document.createElement('div');
-          lds.className = 'lds-spinner';
-          spinner.appendChild(lds);
-          for (let i = 0 ; i < 12 ; i++) {
-              lds.appendChild(document.createElement('div'));
-          }
-          const mama = document.querySelector('.rightColumn');
-          mama.appendChild(spinner);
-      })();
-
       const rect_opts = {
         color: "#0077ff",
         weight: 1,
@@ -213,6 +174,23 @@
 
       drawBox();
 
+      // The spinner (from https://github.com/jlong/css-spinners)
+      let spinner;
+      (function buildSpinner() {
+          spinner = document.createElement('div');
+          spinner.className = 'spinner-parent';
+          spinner.style.zIndex = 10000;
+          const lds = document.createElement('div');
+          lds.className = 'lds-spinner';
+          spinner.appendChild(lds);
+          for (let i = 0 ; i < 12 ; i++) {
+              lds.appendChild(document.createElement('div'));
+          }
+          const mama = document.querySelector('.rightColumn');
+          mama.appendChild(spinner);
+      })();
+
+      // Build a URL for the NOMADS service
       function buildURL() {
           // https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25_1hr.pl?
           const server = 'https://nomads.ncep.noaa.gov/';
@@ -223,27 +201,23 @@
           // We can't get the 0600 GRIB at 0601, these things take time
           // to generate.
           if ((hr - (Math.floor(hr/6)*6)) < 2) {
-              now = new Date(now - (60 * 60 * 1000 * 5))
-              hr = now.getHours(); // back off 5 hours, give it a try
+              now = new Date(now - (60 * 60 * 1000 * 2))
+              hr = now.getHours(); // back off 2 hours, give it a try
               hour = (Math.floor(hr/6) * 6).toString().padStart(2, '0');
           }
           const year = now.getFullYear();
           const month = (now.getMonth() + 1).toString().padStart(2, '0');
           const day = (now.getDate()).toString().padStart(2, '0');
-          hr = now.getHours(); // need to get previous 6 hour
+          hr = now.getHours(); // need to get previous 6 hour boundary
           hour = (Math.floor(hr/6) * 6).toString().padStart(2, '0');
-          // dir=%2Fgefs.20251121%2F18%2Fatmos%2Fpgrb2sp25&
           const ymd = `${year}${month}${day}`;
           const dir = `dir=/gefs.${ymd}/${hour}/atmos/pgrb2sp25&`;
-          // file=geavg.t18z.pgrb2s.0p25.f000&
           const file = `file=geavg.t${hour}z.pgrb2s.0p25.f000&`;
-          // var_APCP=on&var_DPT=on&var_PRATE=on&var_PRMSL=on&var_RH=on&
-          // lev_2_m_above_ground=on&lev_10_m_above_ground=on&
           const param_form = document.querySelector('#params');
           const checked = document.querySelectorAll('input:checked');
-          // create a Set of levels
           let varArray = [];
           const levelSet = {};
+          // Could probably use an actual Set() here for the geek points
           for (const el of checked) {
               let ds = el.dataset;
               levelSet[ds.level] = true;
@@ -276,26 +250,29 @@
           let query = `${dir}${file}${vars}${levels}${subregion}`;
           query = query.replaceAll('/', '%2F');
           url = `${url}${query}`;
+          // NOMADS doesn't provide CORS headers.  :-(
           // Special shout-out to the gang at cors-anywhere !!
+          // NOTE:  This is not an acceptable practice for a productionn
+          //        server, but since this is just a demo....
           url = `https://cors-anywhere.com/${url}`;
           return url;
       }
 
+      // The "Download GRIB"/"Save JSON" button
       let jsongrib;
       async function grabGrib() {
           if (grib_bt.dataset.state == 'grib') {
-              // show spinner
-              spinner.style.display = 'inline-block';
+              spinner.style.display = 'inline-block';   // show spinner
               const url = buildURL();
               jsongrib = await grib2json(url);
-              // remove spinner
-              spinner.style.display = 'none';
+              spinner.style.display = 'none';           // hide spinner
               grib_bt.dataset.state = 'json';
               grib_bt.textContent = 'Save JSON';
           } else {
               grib_bt.dataset.state = 'grib';
               grib_bt.textContent = 'Download GRIB';
-              // create filename based on reftime
+              // create filename based on reftime.
+              // ROADMAP:  Better filename.
               if (!jsongrib.length) { 
                   console.warn("GRIB too short");
                   return;
@@ -312,8 +289,8 @@
               const a = document.createElement('a');
               a.href = url;
               a.download = `${refTime}.json`;
-              document.body.appendChild(a); // Append to body temporarily
-              a.click(); // Programmatically click the link to trigger download
+              document.body.appendChild(a); // Append link to DOM
+              a.click();                    // "click" the link
               document.body.removeChild(a); // Clean up the temporary link
               URL.revokeObjectURL(url);     // Release the object URL
           }
@@ -325,21 +302,14 @@
           }
       }
 
+      // Bind functions to the buttons and inputs
       (function bindEvents() {
           for (const id of ['north', 'south', 'east', 'west']) {
               const el = document.getElementById(id);
               el.addEventListener('change', drawBox);
           }
-
-          // bind the button
           grib_bt.addEventListener('click', grabGrib);
       })();
-
-
-
-
-    </script> <!-- module -->
-    <!-- add webgl weather (wind/current/isobars/etc) -->
-    <!-- include leaflet, pako, grib2json.js, index.js -->
+    </script>
   </body>
 </html>
