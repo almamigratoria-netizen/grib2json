@@ -475,6 +475,8 @@ export const grib2json = async function(url) {
             "PRO-0-7-6":  [ "J/kg", "CAPE", "Convective Available Potential Energy" ],
             "PRO-0-7-21":  [ "", "SSI", "Storm Severity Index" ],
             "PRO-0-17-192": [ "", "LTNG", "Lightning" ],
+            "PRO-0-19-0":  [ "m", "VIS", "Visibility" ],
+            "PRO-0-19-25": [ "", "WW", "Weather Interpretation" ],
             // Discipline 1 - Hydrology 
             "PRO-1-1-11":  [ "m", "SNOD", "Snow Depth" ],
             // Discipline 2 - Land Surface Products (land/sea, soil temp, etc)
@@ -487,7 +489,6 @@ export const grib2json = async function(url) {
             "PRO-10-1-2":  [ "m/s", "UOGRG", "U-Component of Current" ],
             "PRO-10-1-3":  [ "m/s", "VOGRD", "V-Component of Current" ],
             // Discipline 19 - Physical atmospheric properties
-            "PRO-19-0-1":  [ "m", "VIS", "Visibility" ],
         }
 
         const slice = (a, b) => { return bytes.slice(a, b + 1); }
@@ -602,7 +603,7 @@ export const grib2json = async function(url) {
         const bitMapIndicator = bytes[6];
         if (bitMapIndicator != 255) {
             const e = "grib2json.js: may not correctly proecess bitmaps";
-            console.error(e);
+            console.warn(e);
         }
 
         const length = b2i(slice(1, 4));
@@ -661,7 +662,7 @@ export const grib2json = async function(url) {
                 bitMapData = bytes2bits(sections.bitMapData);
             }
             while (index < last_bit) {
-                if (useBitMap && bitMapData[index] == '0') {
+                if (useBitMap && bitMapData[dataIndex] == '0') {
                     values.push(null);
                 } else {
                     let nibble = bitstring.slice(index, index + bitsPerValue);
