@@ -24,6 +24,8 @@ try {
 }
 console.log(grib);
 ```
+Please bear in mind that the javascript version is just javascript.  You might not want to try decoding multo-megabyte global GRIB2's.
+
 
 ## What's a GRIB?
 The [WMO](https://wmo.int) ( World Meteorological Organization ), in cooperation the [ECMWF](https://www.ecmwf.int) \(European Centre for Medium Range Weather Forecasting) developed the GRIB \(**GRI**dded **B**inary ) format as a way to store and interchange weather and climate data.  Tools to manipulate it are generally fairly complicated.  There are a number of web map plugsins that display environmentatal data (winds, temperature, aerosol density, etc) for just about every web map suite (Google maps, OpenLayers, Leaflet, etc).  They pretty much all ingest data in the format produced by @cambecc's tool.  
