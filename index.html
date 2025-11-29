@@ -7,7 +7,7 @@
     <meta name="description" contents="GRIB grib2json javascript weather" />
     <!-- CSS -->
     <link rel="stylesheet" href="./lib/leaflet-2.0.0-alpha.1/dist/leaflet.css">
-    <link rel="stylesheet" href="./lib/lds-spinner.css">
+    <link rel="stylesheet" href="./lib/lds_spinner.css">
     <link rel="stylesheet" href="./index.css">
   </head>
 
@@ -153,8 +153,24 @@
         opacity: 0.6,
         fill: true,
       };
-      let rect = null;
+      // The spinner (from https://github.com/jlong/css-spinners)
+      let spinner;
+      (function buildSpinner() {
+          spinner = document.createElement('div');
+          spinner.className = 'spinner-parent';
+          spinner.style.zIndex = 10000;
+          const lds = document.createElement('div');
+          lds.className = 'lds-spinner';
+          spinner.appendChild(lds);
+          for (let i = 0 ; i < 12 ; i++) {
+              lds.appendChild(document.createElement('div'));
+          }
+          const mama = document.querySelector('.rightColumn');
+          mama.appendChild(spinner);
+      })();
 
+
+      let rect = null;
       function drawBox() {
           spinner.style.display = 'none';
           if (grib_bt.dataset.state == 'json') {
@@ -173,22 +189,6 @@
       }
 
       drawBox();
-
-      // The spinner (from https://github.com/jlong/css-spinners)
-      let spinner;
-      (function buildSpinner() {
-          spinner = document.createElement('div');
-          spinner.className = 'spinner-parent';
-          spinner.style.zIndex = 10000;
-          const lds = document.createElement('div');
-          lds.className = 'lds-spinner';
-          spinner.appendChild(lds);
-          for (let i = 0 ; i < 12 ; i++) {
-              lds.appendChild(document.createElement('div'));
-          }
-          const mama = document.querySelector('.rightColumn');
-          mama.appendChild(spinner);
-      })();
 
       // Build a URL for the NOMADS service
       function buildURL() {
