@@ -182,16 +182,27 @@ export const grib2json = async function(url) {
     }
 
     async function download_and_parse_grib(url) {
-        const grib = await download_grib(url);
+        let grib;
+        if (typeof url === "string") {
+            grib = await download_grib(url);
+        } else if (url instanceof Uint8Array) {
+            grib = url;
+        }
+        // otherwise let the chips fall where they may
         const g2j = parse_grib(grib);
         return JSON.stringify(g2j, null, 2);
     }
 
+    // either pass a url (to download) or a Uint8Array with the
+    // already downloaded GRIB file.
     return await download_and_parse_grib(url);
 
     // refTime is a value found in the output of @cambecc's grib2json app
     // It might come from the underlying java libraries from UCAR.  Either way,
     // it's a handy field and for compatiblility with @cambecc, we create it.
+    //
+    // FIXME:  Find out what refTime says when we have multiple forecasts
+    //         in a single GRIB file (like saildocs, etc).
     function build_refTime(src) {
         try {
             const refTime = new Date();
